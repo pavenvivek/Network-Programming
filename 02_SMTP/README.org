@@ -1,0 +1,157 @@
+#+TITLE: Exploring the Simple Mail Transfer Protocol
+#+SUBTITLE: Fall 2020
+#+OPTIONS: toc:nil num:nil html-postamble:nil author:nil date:nil
+#+LATEX_HEADER: \usepackage{times}
+#+LATEX_HEADER: \usepackage{listings}
+#+LATEX_HEADER: \lstset{basicstyle=\small\ttfamily,columns=flexible,breaklines=true}
+#+LATEX_HEADER: \usepackage[a4paper,margin=1.0in]{geometry}
+#+LATEX_HEADER: \setlength{\parindent}{0cm}
+#+LATEX_HEADER: \usepackage{parskip}
+#+LATEX_HEADER: \usepackage{enumitem}
+#+LATEX_HEADER: \setitemize{noitemsep,topsep=2pt,parsep=2pt,partopsep=2pt}
+#+LATEX_HEADER: \usepackage{titling}
+#+LATEX_HEADER: \setlength{\droptitle}{-1in}
+#+LATEX_HEADER: \posttitle{\par\end{center}\vspace{-.5in}}
+
+* Instructions
+
+The Simple Mail Transfer Protocol (SMTP) is used to exchange electronic mail
+(email) messages on the Internet.  A number of organizations run what are known
+as Mail Transfer Agents (MTAs) that implement SMTP and handle the delivery and
+relaying of email.  This assignment will have you become familiar with the
+text-based nature of the protocol by interacting directly with an SMTP server.
+You will then write a simple client program to perform the same functions.
+
+** Task 1 - Interact with an SMTP server
+
+For this task you will connect to the IU mail-relay server using a command line
+tool.
+
+*NOTE*: You will need to connect from a system on the IU network.  Access to the
+IU mail server on port 25 is restricted to certain networks, and your ISP is
+most likely not one of them!  You may use SICE systems like
+=burrow.sice.indiana.edu= and =silo.sice.indiana.edu=.
+
+Once logged onto one of the above IU hosts, you can use /telnet/ to reach the IU
+mail server at =mail-relay.iu.edu= on port 25:
+
+#+begin_src text
+$ telnet mail-relay.iu.edu 25
+Trying 134.68.220.47...
+Connected to mail-relay.iu.edu.
+Escape character is '^]'.
+220 mail-relay.iu.edu ESMTP Sendmail 8.14.4/8.14.4/IU Campus Communications Team; Tue, 14 Aug 2019 10:20:10 -0400
+#+end_src
+
+Use the /Ctrl-]/ escape sequence to quit telnet by typing *quit* at the
+=telnet>= prompt.
+
+Another option on Linux systems is to use the /netcat/ tool (/nc/).
+
+#+begin_src text
+$ nc mail-relay.iu.edu 25
+220 mail-relay.iu.edu ESMTP Sendmail 8.14.4/8.14.4/IU Campus Communications Team; Tue, 14 Aug 2019 10:20:48 -0400
+#+end_src
+
+Use /Ctrl-C/ to end your /nc/ session.
+
+Once connected to the mail server, follow the instructions in your
+textbook or [[http://www.samlogic.net/articles/smtp-commands-reference.htm][online resources]] to send email to yourself using SMTP. Once
+you are comfortable with crafting and sending your own messages,
+submit the following:
+
+1. Send a message while connected to the IU mail server with the following info:
+   * To: =sice-networks-l@list.indiana.edu=
+   * From: <YOUR IU EMAIL>
+   * Subject: "<YOUR NAME> Assignment 01 SMTP"
+
+2. Capture the successful SMTP exchange in your terminal session and submit as a
+   text document.
+
+3. Answer the following questions and submit with part (2) above.
+   * What happens when you try to send to a non-IU email address?  Why?
+   * What happens when you use a made-up from address? Why?
+
+** Task 2 - Write a simple SMTP client
+
+The purpose of this exercise is to familiarize yourself with developing a simple
+client that uses the network, specifically one that talks to the SMTP server you
+used in the first task.
+
+In the =src/= subdirectory there is skeleton code in C and Python for writing
+your own SMTP client.  You may choose to develop your client in either language,
+or both!
+
+Perform the following steps:
+
+1. For a given language, choose a library or module that will provide SMTP
+   functionality for your client application.  For example:
+
+   * C: [[https://curl.haxx.se/libcurl/][libcurl]]
+   * Python: [[https://docs.python.org/3/library/smtplib.html][smtplib]]
+
+   We will not be using sockets directly for this part of the assignment.  The intent is to
+   become familiar with the code writing and submission process for this class
+   while learning how to integrate existing functionality (in modules,
+   libraries, etc.) into your own implementations.
+
+2. Extend the skeleton client code to duplicate the mail sending ability you
+   were able to achieve in the first task.  Your client code should call the
+   appropriate SMTP library/module methods that will deliver a message with the
+   fields read from your program's command line arguments.
+
+   Note: Make sure your message has appropriate headers!
+
+** Task 3 - =struct sockaddr= and friends.
+
+Libraries and modules like =libcurl= and =smtplib= hide the
+lower-level details of socket programming from the developer to
+support existing Internet applications like email.  To prepare for
+your next assignment that will use sockets directly, you will now get
+some experience with the addressing and host resolution structures
+used by the C sockets library.
+
+We will use C for this task so that everyone gets a taste of one of
+the earliest and most prevalent methods for developing network
+applications.  Future programming tasks will let you continue to
+develop in C++ and Python as well.
+
+Using the =c/smtp.c= skeleton as a starting point, create a new file
+called =smtp-socket.c= and add it to the =PROGRAMS= line in the
+Makefile.  You should now be able to build both binaries with a simple
+=make= on the command line.  Now implement the following:
+
+*NOTE*: =gethostname= and related methods are now deprecated in favor
+of =getaddrinfo=!
+
+1. Use =getaddrinfo()= to resolve the /server/ argument in your
+   client.  Make sure to provide hints and the /service/ (i.e. SMTP
+   port number).
+
+2. Print the IP address(es) of the server using =inet_ntoa()=, passing
+   in the expected =sockaddr_in= struct from the results of the
+   =getaddrinfo()= call.  Hint: read the man pages.
+
+3. Use the resulting list of =addrinfo= structs to create a socket,
+   using the =socket()= method.  Attempt to =connect()= to the created
+   socket.  Perform appropriate error checking here.
+
+4. Now =read()= 255 bytes from a successfully connected socket and
+   print this buffer to display the mail server's welcome message.
+   Note: you must first allocate a buffer of size 255 to read into.
+
+5. Disconnect from the mail server using =close()=.
+
+Remember to use =man= pages to get more information on methods like
+=getaddrinfo=, =connect=, and =read()=. These are available on SICE
+systems like =silo= and =burrow=, or online via the Web.
+
+** TO SUBMIT
+   * Assignment 01 email delivered to =sice-networks-l@list.indiana.edu=
+   * Screen capture of SMTP session and answers to questions.
+   * SMTP client code following the code submission guidelines.
+   * =smtp-socket.c= demonstrating a client socket connection to the
+     mail server.
+
+** TO GET GRADED
+   * Give a demo 

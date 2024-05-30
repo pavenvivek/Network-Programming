@@ -1,0 +1,45 @@
+#+TITLE: Readme
+You can use the provided tester in this folder to test your programs.
+
+* RUDP
+Your repo must match the structure of this repo, and needs to contain a file ~config.py~ in the src/ folder.
+
+* Fun with Sockets!
+For this assignment, use =a2_tester.py= to test your program.
+The tester can test either a C solution or Python3 solution.
+
+#+BEGIN_SRC shell :results output :exports both :wrap example
+cd py
+python3 ../a2_tester.py tcp
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+Hello, I am a server
+#+end_example
+
+You can explore all the commands:
+
+#+BEGIN_SRC shell :results output :exports both :wrap example
+python3 a2_tester.py -h
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+Ensure this file is in the same directory as your netster program.
+
+usage:
+python3 a2_tester.py (tcp|udp)
+python3 a2_tester.py (tcp|udp) hello
+python3 a2_tester.py (tcp|udp) asdf
+python3 a2_tester.py (tcp|udp) rand
+python3 a2_tester.py (tcp|udp) hibye
+python3 a2_tester.py (tcp|udp) exit
+python3 a2_tester.py (tcp|udp) hiexit
+python3 a2_tester.py (tcp|udp) parallel
+python3 a2_tester.py (tcp|udp) byehiexit (client|server)
+
+(Add --verbose to any of the above commands to print extra information.)
+#+end_example
+
+Good luck!

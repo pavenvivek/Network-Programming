@@ -1,0 +1,126 @@
+#+TITLE: Code Submission Guidelines
+#+SUBTITLE: 
+#+OPTIONS: toc:nil num:nil html-postamble:nil author:nil date:nil
+#+LATEX_HEADER: \usepackage{times}
+#+LATEX_HEADER: \usepackage{listings}
+#+LATEX_HEADER: \lstset{basicstyle=\small\ttfamily,columns=flexible,breaklines=true}
+#+LATEX_HEADER: \usepackage[a4paper,margin=1.0in]{geometry}
+#+LATEX_HEADER: \setlength{\parindent}{0cm}
+#+LATEX_HEADER: \usepackage{enumitem}
+#+LATEX_HEADER: \setitemize{noitemsep,topsep=2pt,parsep=2pt,partopsep=2pt}
+#+LATEX_HEADER: \usepackage{titling}
+#+LATEX_HEADER: \setlength{\droptitle}{-1in}
+#+LATEX_HEADER: \posttitle{\par\end{center}\vspace{-.5in}}
+
+** Overview
+
+This class will make use of the Github service provided by IU.
+
+ * https://github.iu.edu
+ * Login with your IU username and password.
+
+Do not confuse this with github.com!
+
+** Setting up your private keys
+
+To work efficiently with IU github, you will need to set up your private
+keys. Github.com has a very good tutorial on how to set this up. You should note
+that where the tutorial refers to *github.com*, you should use *github.iu.edu*.
+
+[[https://help.github.com/articles/generating-ssh-keys/][generating ssh keys]]
+
+** Repository Creation
+
+You should create a *PRIVATE* repository called *Net-Fall20* on IU Github. 
+
+Make sure to set your new repositories to "Private" as shown in Figure
+[[fig:create_repo]] to prevent others from viewing your work!
+
+#+CAPTION: Set your new repositories to "Private"
+#+NAME:   fig:create_repo
+#+ATTR_LATEX: :width 6in
+#+ATTR_HTML: :width 1280px
+[[./images/create_repo.png]]
+
+*IMPORTANT*: Add the =sicenet= user to your *Net-Fall20* repository.
+
+ * The Github =sicenet= user is the instructor and AI account for this class.
+   You must ensure that this user is added as a collaborator to the repository
+   you will submit for grading.  You will be able to add collaborators under the
+   "Settings" for your repository.  See Figure [[fig:add_collab_repo]] below.
+
+#+CAPTION: Adding the =sicenet= user to your submitted repository.
+#+NAME:   fig:add_collab_repo
+#+ATTR_LATEX: :width 6in
+#+ATTR_HTML: :width 1280px
+[[./images/add_collab_repo.png]]
+
+** Course Repository Duplication
+
+The course repository should be duplicated using the steps below:
+
+ * Change directories to a scratch area. Create a bare clone of the *Net-Fall20*
+   course repository using:
+
+#+begin_src text
+git clone --bare git@github.iu.edu:SICE-Networks/Net-Fall20
+#+end_src
+
+ * Enter the Net-Fall20 directory
+
+#+begin_src text
+cd Net-Fall20
+#+end_src
+
+ * Push this repo data to your repository replacing /yourreponame/ with the
+   appropriate =git@github.iu.edu= address.
+
+#+begin_src text
+git push --mirror yourreponame
+#+end_src text
+
+ * If all went well and your shared repository has the data, you can remove the
+   directory because it is no longer needed.
+
+#+begin_src text
+cd ..
+rm -rf Net-Fall20
+#+end_src
+
+** Remote Setup
+
+You will need to keep the original course repository as an upstream remote for
+your repository. This repository will be updated periodically with new lab
+material. Adding an upstream remote will allow you to keep your copy
+synchronized with updated lab material.
+
+ * Clone your *Net-Fall20*
+
+ * cd into the Net-Fall20 directory. Add an upstream remote to your
+   repository. 
+
+#+begin_src text
+git remote add upstream git@github.iu.edu:SICE-Networks/Net-Fall20.git
+#+end_src
+
+ * In the future, you can pull in updates to the course repository using a fetch
+   command:
+
+#+begin_src text
+git fetch upstream
+#+end_src
+
+** Submission with Canvas
+
+Each assignment and project for this class will have a corresponding assignment
+created in Canvas.  Once you are ready to submit your assignment or project for
+grading, select URL type in the Canvas submit options and paste a url to the
+specific commit hash of your code repository.
+
+ * As an example, your submitted URL should have a format similar to:
+
+#+begin_src text
+https://github.iu.edu/ezkissel/Net-Fall20/commit/1cde9d43e12b8a2e7371b33372b14a5e9a1f0d9c
+#+end_src
+
+

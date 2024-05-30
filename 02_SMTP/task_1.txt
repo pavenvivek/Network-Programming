@@ -1,0 +1,42 @@
+Task 1:
+
+1] SMTP exchange:
+-----------------
+
+[pvivekan@silo ~]$ telnet mail-relay.iu.edu 25
+Trying 134.68.220.47...
+Connected to mail-relay.iu.edu.
+Escape character is '^]'.
+220 Sendmail ESMTP - IU Campus Communications Team - Mail-Relay
+Helo iu.edu
+250 mail-relay.iu.edu Hello silo.soic.indiana.edu [129.79.247.5], pleased to meet you
+Mail From: pvivekan@iu.edu
+250 2.1.0 pvivekan@iu.edu... Sender ok
+Rcpt To: sice-networks-l@list.indiana.edu
+250 2.1.5 sice-networks-l@list.indiana.edu... Recipient ok
+Data
+354 Enter mail, end with "." on a line by itself
+Subject: Paventhan Vivekanandan Assignment 01 SMTP
+Task 1 submission.
+.
+250 2.0.0 08BIKckH019755 Message accepted for delivery
+^]
+telnet> 
+
+-----------------
+
+2] When trying to send to non-iu email address, the server is denying relay.
+
+-----------------
+helo iu.edu
+250 mail-relay.iu.edu Hello silo.soic.indiana.edu [129.79.247.5], pleased to meet you
+mail from: pvivekan@iu.edu
+250 2.1.0 pvivekan@iu.edu... Sender ok
+rcpt to: paven.vivek@gmail.com
+550 5.7.1 paven.vivek@gmail.com... Relaying denied. Proper authentication required.
+-----------------
+
+It's clear from the above message that non-iu mail addresses could not be authenticated by the smtp mail server.
+
+3] When using made-up from address, the server is working as normal without throwing error. It seems, the server is not authenticating or checking the validity of the from address.
+So, the smpt protocol does not bother about the validity of the from address.

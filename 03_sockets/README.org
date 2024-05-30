@@ -1,0 +1,82 @@
+#+TITLE: Fun with Sockets!
+#+SUBTITLE: Fall 2020
+#+OPTIONS: toc:nil num:nil html-postamble:nil author:nil date:nil
+#+LATEX_HEADER: \usepackage{times}
+#+LATEX_HEADER: \usepackage{listings}
+#+LATEX_HEADER: \lstset{basicstyle=\small\ttfamily,columns=flexible,breaklines=true}
+#+LATEX_HEADER: \usepackage[a4paper,margin=1.0in]{geometry}
+#+LATEX_HEADER: \setlength{\parindent}{0cm}
+#+LATEX_HEADER: \usepackage{parskip}
+#+LATEX_HEADER: \usepackage{enumitem}
+#+LATEX_HEADER: \setitemize{noitemsep,topsep=2pt,parsep=2pt,partopsep=2pt}
+#+LATEX_HEADER: \usepackage{titling}
+#+LATEX_HEADER: \setlength{\droptitle}{-1in}
+#+LATEX_HEADER: \posttitle{\par\end{center}\vspace{-.5in}}
+
+* Instructions
+Develop a client/server application using the /sockets/ support available in your chosen programming language (C or Python3).
+In the previous assignment, you connected (using TCP) to an existing server (SMTP mail server) and read from the connected socket.
+Now, you will develop both a client program, the accompanying server program, and the application protocol that will allow both ends to communicate in some meaningful way.
+
+We will be using the /netster/ skeleton code in the ~src/~ directory within the *Net-Fall20* repository.
+This program provides a framework for exploring network programming techniques over this and upcoming assignments.
+Skeleton /netster/ code exists for C (in ~src/c/netster.c~) and Python3 (in ~src/py/netster.py~).
+The skeleton code allows /netster/ to act as either the client or the server, depending on the arguments passed on the command line.
+Run the skeleton code as a first step to become familiar with the structure.
+
+Add functionality to /netster/ in a modular way, by implementing most of your solution within the /a2/ file.
+For the following assignment, add functionality to /a3/, and so forth.
+
+- If using C, your ~netster.c~ file should ~#include "a2.h"~ and your ~a2.h~ file should contain the functions and data for this assignment. You may separate your a2 functionality into both ~a2.h~ and ~a2.c~ if you want. *Do not* change the included ~Makefile~.
+- If using Python3, your netster.py file should ~import a2~ and your ~a2.py~ should contain most of your function definitions and data for this assignment.
+
+While the majority of your code will be in ~a2~, you will still need to add some functionality to ~netster~, for example to accept additional arguments.
+
+When you run /netster/ as a server, it should accept and respond to messages from clients until halted with an explicit ~exit~ message.
+When you run /netster/ as a client, it should read one line at a time from ~stdin~ where each line is a new command (commands are described in Task 1).  Client mode should only terminate when closed with a protocol message.
+
+** Task 1 - TCP client/server protocol
+
+In this task, you will implement a client/server protocol over a TCP socket.
+The protocol will be text-based and simple, at first.
+Application messages exchanged between client and server will be single word commands, and the client and server will respond to these message exchanges in some well-defined manner.
+
+*Protocol Details*:
+
+| Messages MUST be the only content printed to stdout or stderr and should appear alone without any special formatting. |
+| Port numbers < 1024 are for system use; you must use a port number >= 1024.                                           |
+
+- Welcome messages
+  + When started, the server should print ~Hello, I am a server~
+  + When started, the client should print ~Hello, I am a client~
+- Normal messages
+  + Your client should print each message it receives from the server.
+  + If your server receives the message ~hello~, it should respond to the client with the message ~world~ and wait for more messages.
+  + If your server receives the message ~goodbye~, it should respond with the message ~farewell~, terminate the existing connection, and then wait for a new connection from the next client.
+  + If your server receives the message ~exit~, the server process should respond with the message ~ok~ and then terminate.
+  + The server should echo (repeat) all other messages back to the client.
+- Server output
+  + Print each new TCP connection with the string ~connection n from ('host', port)~ where integer ~n~ starts at 0 and increments with each new connection, string ~host~ is the IP address in single quotes (like '127.0.0.1'), and ~port~ is an integer port number (like ~12345~).
+    Example: ~connection 0 from ('127.0.0.1', 1299)~
+  + Print each incoming client message with the string ~got message from ('host', port)~, with the same definitions of ~host~ and ~port~ from above.
+    Example: ~got message from ('127.0.0.1', 1299)~
+- All messages must end with LF (line feed, or ~\n~) character.
+- Limit maximum message size to 256 bytes, /including/ the termination character.
+
+** Task 2 - UDP client/server protocol
+
+Implement the same protocol as defined in Task 1, but this time use UDP instead of TCP.
+There should be two distinct code paths in your /a2/ file(s) depending on if /netster/ was called with the ~-u~ flag or not.
+Also think about what the ~goodbye~ and ~farewell~ exchange means in the UDP case for this protocol.
+
+** Task 3 (Graduate Sections) - Multithreaded server
+
+Graduate students take one step further.
+Extend the above TCP and UDP implementations in /a2/ with multithreaded connection handling, meaning that the server can service more than one client request at a time.
+You should be able to test multiple client connections to a single server simultaneously.
+
+** TO SUBMIT
+
+- Submit by uploading your files to the autograder [[https://autograder.sice.indiana.edu/web/course/11][here]].  Make sure that you are submitting to the correct section (there is one for graduate students and one for undergraduate students).
+- Upload your ~a2~ file as well as your ~netster~ file.
+- If your code completes and you are happy with your grade, you are done (you may submit as many times as you like).

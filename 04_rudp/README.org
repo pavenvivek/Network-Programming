@@ -1,0 +1,132 @@
+#+TITLE: Reliable UDP (Part 1)
+#+SUBTITLE: Fall 2020
+#+OPTIONS: toc:nil num:nil html-postamble:nil author:nil date:nil
+#+LATEX_HEADER: \usepackage{times}
+#+LATEX_HEADER: \usepackage{listings}
+#+LATEX_HEADER: \lstset{basicstyle=\small\ttfamily,columns=flexible,breaklines=true}
+#+LATEX_HEADER: \usepackage[a4paper,margin=1.0in]{geometry}
+#+LATEX_HEADER: \setlength{\parindent}{0cm}
+#+LATEX_HEADER: \usepackage{parskip}
+#+LATEX_HEADER: \usepackage{enumitem}
+#+LATEX_HEADER: \setitemize{noitemsep,topsep=2pt,parsep=2pt,partopsep=2pt}
+#+LATEX_HEADER: \usepackage{titling}
+#+LATEX_HEADER: \setlength{\droptitle}{-1in}
+#+LATEX_HEADER: \posttitle{\par\end{center}\vspace{-.5in}}
+
+This is part 1 of 2. Part 2 is [[./PART_2.org][here]].
+
+* Instructions
+The purpose of this assignment is to extend your /netster/ code so that it supports reliable network communication over UDP - Reliable UDP (RUDP)!  You already implemented an application protocol over TCP and UDP and you will now have an opportunity to test your existing code over an unreliable network. Once the limitations of UDP over an unreliable channel become clear you should feel motivated to solve the issue at hand with your own RUDP implementation.
+
+This assignment requires both careful planning and likely several iterations of your design before it meets the specifications put forth in the tasks below.  You will have more time to complete this assignment, but be sure to start early and begin experimenting with a lossy network to understand how things work.  Good luck!
+
+* Emulating your local coffee shop's free public Wi-Fi
+On a Linux machine where you have =sudo= privileges, you can emulate a lossy network using =tc= (traffic control) and =netem= (network emulator).
+
+=tc= allows a user to simulate network properties on linux machines; properties such as latency and packet loss rates.  These properties can be restricted to specific TCP/UDP ports.  This is the approach you will use in this assignment to test your =rudp= implementation.
+
+#+BEGIN_SRC shell
+# emulate latency and loss on certain port ranges
+declare -x LAT="25ms"
+declare -x iface="lo"
+declare -x DMASK=0xff00
+
+declare -x ID=2
+declare -x LOSS=0
+declare -x DPORT=2048
+sudo tc qdisc add dev $iface root handle 1: htb
+sudo tc class add dev $iface parent 1: classid 1:1 htb rate 10000Mbps
+sudo tc class add dev $iface parent 1:1 classid 1:${ID} htb rate 10000Mbps
+sudo tc qdisc add dev $iface parent 1:${ID} handle ${ID}0: netem delay $LAT loss $LOSS limit 10000
+sudo tc filter add dev $iface parent 1:0 protocol ip u32 match ip dport $DPORT $DMASK flowid 1:${ID}
+
+declare -x ID=3
+declare -x LOSS=1
+declare -x DPORT=4096
+sudo tc class add dev $iface parent 1:1 classid 1:${ID} htb rate 10000Mbps
+sudo tc qdisc add dev $iface parent 1:${ID} handle ${ID}0: netem delay $LAT loss $LOSS limit 10000
+sudo tc filter add dev $iface parent 1:0 protocol ip u32 match ip dport $DPORT $DMASK flowid 1:${ID}
+
+declare -x ID=4
+declare -x LOSS=30
+declare -x DPORT=8192
+sudo tc class add dev $iface parent 1:1 classid 1:${ID} htb rate 10000Mbps
+sudo tc qdisc add dev $iface parent 1:${ID} handle ${ID}0: netem delay $LAT loss $LOSS limit 10000
+sudo tc filter add dev $iface parent 1:0 protocol ip u32 match ip dport $DPORT $DMASK flowid 1:${ID}
+#+END_SRC
+
+Using these recipes, your development environment will now have special port ranges with bad performance:
+
+| dst port range | latency | loss |
+|----------------+---------+------|
+|      2048-2304 | 25ms    |   0% |
+|      4096-4352 | 25ms    |   1% |
+|      8192-8448 | 25ms    |  30% |
+
+
+To remove these settings, use the following:
+
+#+BEGIN_SRC shell
+declare -x iface="lo"
+sudo tc qdisc del dev $iface root
+#+END_SRC
+
+* How to develop and test with packet loss and delay
+- Other ports (not within the ranges described in the table above) are normal, with no added latency or loss behavior.
+- The test ports add 25ms latency in both directions, or 50ms round-trip-time (RTT).
+
+You can observe the impact of 30% loss across the network with two terminals.
+
+Server terminal:
+#+BEGIN_SRC shell
+server$ ./netster -u -p 8199
+<...missing lots of input from the client...>
+#+END_SRC
+
+Client terminal:
+#+BEGIN_SRC shell
+client$ ./netster -u -p 8199 localhost
+Hello, I am a client
+send a message: <...type lots of input...>
+<...missing lots of responses from the server...>
+#+END_SRC
+
+** Task 1 - Extend netster to transfer file data
+You should extend /netster/ so that you can transfer file data from client to server.  In addition to infrequent request/response messages from the previous assignment, you will now need to send lots of data at once and stress the underlying network.  Reading from a file and transfering its contents over the network meets that criteria.  Having the /netster/ server save the file also lets you check if your RUDP design is working correctly.  Obviously, the received and saved file should be a bit-wise duplicate of the source file sent by the /netster/ client when transfered with a working RUDP design.
+
+The /netster/ skeleton code has a command line argument (=-f=) to specify a filename, and should *read* the file if started as a client, or *write* the file if started as a server.
+
+With an open file handle available when the =-f= option if given, you will use the file I/O methods in your given programming language to read and write file data.  For example, =fread()= and =fwrite()= in C, or =f.read()= and =f.write()= in Python3.  It is your job to move file data between the file handle and the network socket using an intermediate buffer.  Performance is not a primary concern here, so copying in and out of a user space buffer is perfectly fine.  When segmenting the file into UDP frames, restrict each packet to less than a single MTU (1500 bytes for the purposes of this assignment).  In practical terms, this means limiting the send size to approx. 1024 bytes.
+
+** Task 2 - Implement alternating bit, stop-and-wait protocol
+You will implement a stop-and-wait protocol (i.e. alternating bit protocol), called *rdt3.0* in the book and slides.
+
+Since you implemented the UDP client/server in the previous assignment, you already have experience with a similar unreliable channel interface (i.e. =udt_send()= and =udt_recv()= from *rdt3.0*). You must now implement the =rdt_send()= and =rdt_rcv()= interface that your client and server will use when running in RUDP mode.  In other words, your =rdt_= methods should provide the reliable service for the calling application and use the underlying UDP =sendto()= and =recvfrom()= methods to access the unreliable channel.
+
+There are a number of ways to implement this task correctly; however, there are a few key features and assumptions you can count on:
+
+- You must introduce a new RUDP header that encapsulates the application data sent in via =rdt_send()=.  This should include fields to support sequence numbers, message type (ACK, NACK, etc.), and potentially other fields like length.
+- You will need a countdown timer.
+- You may assume unidirectional data transfer (e.g. client -> server).  You can make changes in your /netster/ application code to ensure unidirectional flow (e.g. file transfer) and also to pace how often data is sent into your RUDP interface for debugging purposes.
+- You may use both ACK and NACK control messages instead of duplicate ACKs.
+- You may assume only a single client RUDP session at a time.
+- You may assume that UDP handles the checksum error detection for you.  Your implementation should treat any potentially corrupt packets the same as if they were simply lost.
+
+Your strategy for state management and handling control messages is up to you.  The *rdt3.0* state machines from the book and slides may be guides but the expectation is that many different implementations should arise from this assignment.
+
+
+** TO SUBMIT
+- Write well-documented and well-formatted code in your /a3/ and /netster/ files for Tasks 1 and 2.
+- Commit and push your changes to your Net-Fall20 github.iu.edu repository.
+- Submit to Canvas a URL for your repository containing a commit hash. To find this url, go to your Net-Fall20 repository's /commits/ endpoint, and choose one specific commit for your teachers to grade.
+
+  # https://gist.github.com/dergachev/4627207#gistcomment-1407037
+  [[./images/out.gif]]
+
+Your URL should look similar to this:
+
+: https://github.iu.edu/username/Net-Fall20/commit/00a3e8fc1e0f2bad388a9f138be1e909eef25eb4
+
+Replace =username= with your username, and replace =00a3e8fc1e0f2bad388a9f138be1e909eef25eb4= with the commit hash of your chosen commit.
+
+You can find this same commit hash by running the command =git log= from your terminal, after changing directory to your repository folder.

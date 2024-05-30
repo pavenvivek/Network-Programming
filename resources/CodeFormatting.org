@@ -1,0 +1,144 @@
+#+TITLE: Code Formatting Guidelines
+#+SUBTITLE: 
+#+OPTIONS: toc:nil num:nil html-postamble:nil author:nil date:nil
+#+LATEX_HEADER: \usepackage{times}
+#+LATEX_HEADER: \usepackage{listings}
+#+LATEX_HEADER: \lstset{basicstyle=\small\ttfamily,columns=flexible,breaklines=true}
+#+LATEX_HEADER: \usepackage[a4paper,margin=1.0in]{geometry}
+#+LATEX_HEADER: \setlength{\parindent}{0cm}
+#+LATEX_HEADER: \usepackage{enumitem}
+#+LATEX_HEADER: \setitemize{noitemsep,topsep=2pt,parsep=2pt,partopsep=2pt}
+#+LATEX_HEADER: \usepackage{titling}
+#+LATEX_HEADER: \setlength{\droptitle}{-1in}
+#+LATEX_HEADER: \posttitle{\par\end{center}\vspace{-.5in}}
+
+** Overview
+
+#+BEGIN_QUOTE
+/Based off of Clint Whaley's coding style [[http://homes.sice.indiana.edu/rcwhaley/teach/ise111_S20/LEC/01codeStyle_ho.pdf][document]]./
+#+END_QUOTE
+
+This class has a mandatory coding style
+
+ * When you work in a group you’ll almost always have a required coding style
+   that facilitates mutual understanding
+
+ * Coding style dictates formatting beyond the language rules to aid in human
+   understanding
+
+
+** General rules
+
+ * Lines are at most 80 characters in length
+ * No tabs should be used in the file, only spaces
+   * in vim can use :set expandtab
+   * in .emacs can use =(setq-default indent-tabs-mode nil)=
+ * If bodies are always on a separate line from =if=, so you want:
+
+   #+begin_src c
+     if (cond)
+        statement;
+   #+end_src
+
+   rather than:
+
+   #+begin_src c
+     if (cond) statement;
+   #+end_src
+
+ * Indentation of a minimum 2 spaces and a maximum 4 spaces.  With 80
+   column lines, we want compact yet readable code.
+
+ * No "magic numbers". If you use a constant value in your code, make
+   sure to =#define= or declare it as a static variable with a
+   descriptive name.
+
+** Commenting
+
+ * Submitted source code for assignments and projects should be
+   prefaced with a comment block that lists the date created, creating
+   user (your name), IU username, and a brief description of the
+   program functionality.
+
+   #+begin_src c
+   /**************************************************************
+   /* EXAMPLE SOURCE FILE - First Last (IU username)
+   /* CREATED: 08/22/2018
+   /* 
+   /* This is an example comment for Networks assignments
+   /* This example provides no functionality
+   /**************************************************************
+   #+end_src
+
+ * Individual methods and functions should include a comment *above*
+   the method signature that explains what the method does.
+
+ * More involved methods should have additional documentation.
+   * Lines whose use is not immediately clear should also have inline
+     comments around them.
+
+** C/C++ Style
+
+ * Comments can be either =/* */= or =//=.  Instead of forcing one
+   style, focus on consistency and accurately documenting your code.
+
+ * You may use either Allman, K&R, or Attach brace style.  Pick one
+   and be consistent!
+
+   /*Allman*/:
+
+   #+begin_src c
+   int Foo(bool isBar)
+   {
+     if (isBar)
+     {
+       bar();
+       return 1;
+     }
+     else
+       return 0;
+   }
+   #+end_src
+
+   /*K&R*/:
+
+   #+begin_src c
+   int Foo(bool isBar)
+   {
+     if (isBar) {
+       bar();
+       return 1;
+     } else {
+       return 0;
+     }
+   }
+   #+end_src
+
+   /*Attach*/:
+
+   #+begin_src c
+   int Foo(bool isBar) {
+     if (isBar) {
+       bar();
+       return 1;
+     } else {
+       return 0;
+     }
+   }
+   #+end_src
+
+ * Multiline function calls have arguments indented to the opening
+   parenthesis:
+
+   #+begin_example
+   error = function_call(arg1, arg2, arg3,
+                         arg4, ar5);
+   #+end_example
+
+** Python
+
+ * Read over the following [[https://docs.python-guide.org/writing/style/][style guide]].
+
+ * *Key takeaways*:
+   * One statement per line
+   * Understand common Python [[https://docs.python-guide.org/writing/style/#conventions][conventions]].

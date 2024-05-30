@@ -1,0 +1,121 @@
+#+TITLE: Performance testing with iperf3
+#+SUBTITLE: Fall 2020
+#+OPTIONS: toc:nil num:nil html-postamble:nil author:nil date:nil
+#+LATEX_HEADER: \usepackage{times}
+#+LATEX_HEADER: \usepackage{listings}
+#+LATEX_HEADER: \lstset{basicstyle=\small\ttfamily,columns=flexible,breaklines=true}
+#+LATEX_HEADER: \usepackage[a4paper,margin=1.0in]{geometry}
+#+LATEX_HEADER: \setlength{\parindent}{0cm}
+#+LATEX_HEADER: \usepackage{parskip}
+#+LATEX_HEADER: \usepackage{enumitem}
+#+LATEX_HEADER: \setitemize{noitemsep,topsep=2pt,parsep=2pt,partopsep=2pt}
+#+LATEX_HEADER: \usepackage{titling}
+#+LATEX_HEADER: \setlength{\droptitle}{-1in}
+#+LATEX_HEADER: \posttitle{\par\end{center}\vspace{-.5in}}
+
+* Instructions
+
+iperf3 is a network performance measurement tool.  You may be familiar with
+similar online tools like http://fast.com and http://www.speedtest.net.  Unlike these services
+however, iperf3 allows you to have fine control of the test configuration and
+both source and destination.  In this assignment, you will be using iperf3 to
+examine the performance of the network from a host of your choice and a server
+at IU.
+
+** Task 1 - Install iperf3
+
+The method of using and installing iperf3 will depend on your operating system.
+
+*** Linux
+
+On a linux environment, you will have to use your systems package manager, such as
+dnf, yum, or apt.  Check for the correct package online.
+
+*** Mac
+
+Install iperf3 using brew as described here: http://macappstore.org/iperf3/
+
+*** Windows
+
+Install the binary in a location you can easily find later (this assignment will assume 
+it is located in C:\Users\<username>\Downloads) found here: https://iperf.fr/download/windows/iperf-3.1.3-win64.zip
+
+
+** Task 2 - Record your performance on fast.com
+
+Visit fast.com and record the download performance in a text file called *measurements*.
+
+** Task 3a - Test your performance with iperf3
+
+| Note                           |
+|--------------------------------|
+| iperf3 on windows must be run with the command prompt (started with by running cmd from the start menu).  You must be in the same directory as iperf3 was downloaded to, change directory in Windows is also cd |
+
+iperf3 has a number of flags to tune the performance of your test.  First test
+the basic performance with:
+
+#+BEGIN_SRC
+iperf3 -p 5001 -c iu-stor01.crest.iu.edu
+#+END_SRC
+
+This will test flood your connection, sending data from your current device to a server
+at IU located at [[iu-stor01.crest.iu.edu]] on port 5001.  iperf3 can also test against any publicly
+available server; some public servers are listed here: https://iperf.fr/iperf-servers.php
+
+Next, test the reverse direction with the -R flag
+
+#+BEGIN_SRC
+iperf3 -p 5001 -R -c iu-stor01.crest.iu.edu
+#+END_SRC
+
+This will perform the same test, but in the reverse direction, flooding data from the
+remote server ([[iu-stor01.crest.iu.edu]]) to your client.
+
+Copy the text output of your two tests in *perf.txt* .
+
+** Task 3b - Tune your test performance
+
+Try improving the test performance by using the -P (multiple parallel TCP connection)
+test values from 1 to 5 and write in your test value which -P value gave the best performance
+with and without the -R flag.
+
+#+BEGIN_SRC
+iperf3 -p 5001 -R -P 5 -c iu-stor01.crest.iu.edu
+#+END_SRC
+
+** Task 4 - Build a network Map
+
+In a separate text document named *route*, write your best performance(download speed i.e. with -R flag and the receiver) on the first line as so
+
+#+BEGIN_SRC
+<numeric_value>Mbps,
+#+END_SRC
+
+Use the average performance value found on the last line of the test output.
+
+Run traceroute to iu-stor01.crest.iu.edu and copy each hostname/ip hop in
+the result as a comma separated list on the same line as the performance value like below.
+(Unknown steps in the route should be listed as *, this will likely be the case for the last 22 hops)
+
+| Note                           |
+|--------------------------------|
+| On Mac and Linux, you will need to run traceroute with the -I flag in order to get the full path. |
+
+#+BEGIN_SRC
+Example:
+152Mbps,192.168.1.2,96.120.112.113, ..., *, *, *
+#+END_SRC
+
+We will be compiling these routes and discussing interesting performance and topology ramifications in class.
+
+** TO SUBMIT
+
+Items to turn in:
+
+ * *measurements* Text file that contains the following
+  * your fast.com performance
+  * your traceroute
+  * your iperf3 results -- include complete output for one stream and the output
+    from the best of the parallel runs (2-5).
+ * A text file *perf.txt* containing the basic iperf3 tests
+ * *route* Text file containing route and performance information

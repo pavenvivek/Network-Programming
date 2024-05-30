@@ -1,0 +1,195 @@
+#+TITLE: Assignment 06: Openflow
+#+OPTIONS: toc:nil num:nil html-postamble:nil author:nil date:nil
+#+LATEX_HEADER: \usepackage{times}
+#+LATEX_HEADER: \usepackage{listings}
+#+LATEX_HEADER: \lstset{basicstyle=\small\ttfamily,columns=flexible,breaklines=true}
+#+LATEX_HEADER: \usepackage[a4paper,margin=1.0in]{geometry}
+#+LATEX_HEADER: \setlength{\parindent}{0cm}
+#+LATEX_HEADER: \usepackage{parskip}
+#+LATEX_HEADER: \usepackage{enumitem}
+#+LATEX_HEADER: \setitemize{noitemsep,topsep=2pt,parsep=2pt,partopsep=2pt}
+#+LATEX_HEADER: \usepackage{titling}
+#+LATEX_HEADER: \setlength{\droptitle}{-1in}
+#+LATEX_HEADER: \posttitle{\par\end{center}\vspace{-.5in}}
+
+* Instructions
+
+This assignment will let you gain experience with OpenFlow and an SDN controller
+software framework called [[https://osrg.github.io/ryu/][Ryu]].  Ryu is Python3-based but the amount of Python
+coding you will need to perform is minimal and the [[https://ryu.readthedocs.io/en/latest/][documentation]] is very
+complete.
+
+** Student IPs and Ports
+
+When testing your controller, you will be using the =router= node on the testbed, running
+on an assigned port.  *See canvas announcement for your assigned port*.  To examine the behavior
+of your network, ssh into =server= and =client= and run 
+
+#+BEGIN_SRC bash
+tail -f /var/log/netdev/<port>
+#+END_SRC
+
+where =<port>= is your assigned port.  This will continuously print the status of the packets on your
+network.  if your network is functioning properly, you will see packets leaving =client= is
+entering =server=.
+
+** Using the skeleton controller
+
+As a first step, take a look at [[file:controller.py][controller.py]] and become comfortable with the
+structure of the application.  Ryu is an event-driven framework, which means
+that when events over the control channels (between the controller and OVS
+instances) occur there is some piece of code that gets executed in the
+controller application.
+
+For example, when an OVS switch/bridge connects to the controller the
+[[https://github.iu.edu/SICE-Networks/Net-Fall19/blob/master/06_openflow/controller.py#L27][_state_change_handler()]] 
+method gets run and you see the register/unregister
+datapath messages get displayed on the console.  When the connected datapath
+begins feature exchange, the 
+[[https://github.iu.edu/SICE-Networks/Net-Fall19/blob/master/06_openflow/controller.py#L41][switch_features_handlers()]]
+is executed.  This latter handler is used to setup the initial flows and forwarding
+state of the connected datapath ID (Openflow Switch).  The =add_routes()= function
+tells the switch to add a provided match-action entry into it's match-action table.
+This in turn determines the behavior of the switch itself.  Remember, the switch and
+controller in SDN are separate entities and without instruction from the controller,
+the switch would do nothing.  See the =self.add_routes()= methods
+[[https://github.iu.edu/SICE-Networks/Net-Fall19/blob/master/06_openflow/controller.py#L54][here]] and 
+[[https://github.iu.edu/SICE-Networks/Net-Fall19/blob/master/06_openflow/controller.py#L60][here]] which
+set the handling of ARP packets to normal routing and the default rule to send packets to your controller respectively.
+
+Note that Ryu assigns handlers for events by "annotating" methods using the
+=@set_ev_cls()= descriptor.  This is a Python mechanism for allowing methods to
+be executed with extra behaviors; In this case, the =@set_ev_cls()= descriptor
+tells python to call the function in response to a provided event.  You don't 
+have to worry too much about how this works, just know that when events happen 
+over the OpenFlow control channel a pre-defined method in your =controller.py= 
+application is executed.
+
+One such important event is known as /Packet-in/.  This event happens whenever a
+packet matches a rule in a switch's match-action table where the /action/ is CONTROLLER.
+Note that as described above, our application sets up a default case where all packets
+that fail to match other rules should be forwarded to the controller.  This is common
+practise in SDN.  See the 
+[[https://github.iu.edu/SICE-Networks/Net-Fall19/blob/master/06_openflow/controller.py#L100][_packet_in_handler()]]
+to examine the starting behavior of =controller.py= when a new packet arrives at the 
+controller.  With the packet from  the device, you can parse out the protocol
+information and display it as a debugging  message, which is exactly what the 
+=controller.py= handler does.  This is a helpful debugging tool as you will be 
+able to see any unmatched packet that arrives on a given interface and figure out 
+how to handle it appropriately.
+
+** Task 1: Manage routes using controller
+
+Your task is to extend the =controller.py= "MyController" application so that it
+installs rules on all of your router nodes to connect your layer-3 network.  The
+[[https://github.iu.edu/SICE-Networks/Net-Fall19/blob/master/06_openflow/controller.py#L139][add_routes()]]
+method is where you will initially add the code to "program" your network.
+
+The following block of code serves as the core mechanism for adding a route to the
+switch as described so far in the class.
+
+#+BEGIN_SRC python
+match = parser.OFPMatch(eth_type=ether_types.ETH_TYPE_IP,
+                        ipv4_dst=<ip>)
+actions = [parser.OFPActionDecNwTtl(),
+           parser.OFPActionSetField(eth_src="f4:52:14:49:54:60"),
+           parser.OFPActionSetField(eth_dst=<mac>),
+           parser.OFPActionOutput(<port>)]
+self.add_flow(datapath, 200, match, actions)
+#+END_SRC
+
+Where =<ip>= is based on your assigned port and =<mac>= and =<port>= are as
+follows.
+
+| ip                         | mac               | port        |
+|----------------------------+-------------------+-------------|
+| <Student Unique Client IP> | 00:02:c9:18:10:40 | 1           |
+| <Student Unique Server IP> | f4:52:14:01:71:70 | 2           |
+
+As you can see, the =match= compares the /eth_type/ header and the
+destination /ipv4/ header.  Note here that you could match on other fields
+as described in the Ryu docs or in the openflow specification.
+Further, the =actions= list three actions for the switch to take
+/in order/ on any matching packet: Decrement the /TTL/, set the source
+MAC address (this is the hard-coded MAC for the router interface in this 
+case), set the MAC address to the new /destination/ (recall that in Layer 
+3 routing, the destination MAC address changes on each subnet boundry), and 
+the /output port/.  For our purposes, the /output port/ is the most 
+important; it determines which wire the packet will exit the switch by.
+
+A successful assignment will have your controller insert the necessary flows
+mods (i.e. rules) at each router node to enable full connectivity between every
+client node in your network topology.  However, you do not need to enable
+bi-directional traffic to/from every router IP from other routers or from
+clients to/from routers.  The routers can be considered "transit" nodes.
+
+*** Testing your Controller
+
+Test your controller by sshing into =router= from =netdev= as with previous assignments and running
+
+#+BEGIN_SRC bash
+ryu-manager controller.py --ofp-tcp-listen-port <port>
+#+END_SRC
+
+Where =<port>= is your assigned port number.
+
+** Task 2: Learning Switch
+
+Extend your controller to learn MAC addresses using ARP instead of maintaining a
+static mapping in your controller code.  There are ARP packet classes available
+in Ryu that can help construct and parse ARP packets.
+
+Do this by adding the learning code to the 
+[[https://github.iu.edu/SICE-Networks/Net-Fall19/blob/master/06_openflow/controller.py#L152][learn_routes()]]
+function.  Note that this behavior *replaces* the
+[[https://github.iu.edu/SICE-Networks/Net-Fall19/blob/master/06_openflow/controller.py#L139][add_routes()]]
+behavior, so you should ensure that your learning switch functions as a stand-alone
+configuration.
+
+The behavior of the learning switch should be as follows:  Each packet should
+initially be sent to the /controller/.  The controller should then record the
+packet's incoming port, src_mac, and src_ip, then call =add_flow= to insert
+a similar forwarding rule as above from the learned information.  Remember that
+you will need to "reverse" the rule, in the sense that you are seeing a packet
+coming from a given IP address, but you will write the rule for packets going
+/to/ that IP.
+
+You can test your controller as above, but this time calling
+
+#+BEGIN_SRC bash
+RYUMODE=ARP ryu-manager controller.py --ofp-tcp-listen-port <port>
+#+END_SRC
+
+** Bonus Assignment:  Load Balance your Learning Switch
+
+For the bonus assignment, modify your learning switch from Task 2 so new flows are assigned to a set of IP addresses instead of just one. New packets are rotated through the available IPs to achieve "round robin"-style load balancing.
+
+Each Server IP is allocated its own IP address space, located at ~IP+0~, ~IP+1~, ~IP+2~, and ~IP+3~.
+
+For example, if your assigned Server IP was ~10.10.12.1~, then your set of available IP addresses is:
+
+#+BEGIN_SRC
+10.10.12.1
+10.10.12.2
+10.10.12.3
+10.10.12.4
+#+END_SRC
+
+Unknown flows should be assigned in this sequence:
+
+| incoming flow # |         IP |
+|-----------------+------------|
+|               1 | 10.10.12.1 |
+|               2 | 10.10.12.2 |
+|               3 | 10.10.12.3 |
+|               4 | 10.10.12.4 |
+|               5 | 10.10.12.1 |
+|               6 | 10.10.12.2 |
+|               7 | 10.10.12.3 |
+|               8 | 10.10.12.4 |
+|               9 | 10.10.12.1 |
+|             ... |        ... |
+
+* Submission
+
+To submit this assignment, submit the commit url of your github repo including the completed controller to canvas.

@@ -1,0 +1,269 @@
+#+TITLE: Routing and NAT
+#+SUBTITLE: Fall 2020
+#+OPTIONS: toc:nil num:nil html-postamble:nil author:nil date:nil
+#+LATEX_HEADER: \usepackage{times}
+#+LATEX_HEADER: \usepackage{listings}
+#+LATEX_HEADER: \lstset{basicstyle=\small\ttfamily,columns=flexible,breaklines=true}
+#+LATEX_HEADER: \usepackage[a4paper,margin=1.0in]{geometry}
+#+LATEX_HEADER: \setlength{\parindent}{0cm}
+#+LATEX_HEADER: \usepackage{parskip}
+#+LATEX_HEADER: \usepackage{enumitem}
+#+LATEX_HEADER: \setitemize{noitemsep,topsep=2pt,parsep=2pt,partopsep=2pt}
+#+LATEX_HEADER: \usepackage{titling}
+#+LATEX_HEADER: \setlength{\droptitle}{-1in}
+#+LATEX_HEADER: \posttitle{\par\end{center}\vspace{-.5in}}
+
+* Instructions
+
+In this assigmnent you will gain experience with using *nix networking commands
+to control layer 3 (IP) routing and a basic network address translation (NAT)
+configuration.  The assignment relies on nodes you can provision on GENI racks,
+so spend some initial setup time becoming comfortable allocating the topology
+below and with accessing the nodes using SSH.
+
+** Experiment Setup
+
+#+CAPTION: The logical connectivity for the netdev testbed
+#+NAME:   fig:netdev_testbed
+#+ATTR_LATEX: :width 6in
+#+ATTR_HTML: :width 1280px
+[[./images/GENI-testbed-setup.png]]
+
+ * Configure an experiment on GENI that looks like the topology above.
+
+ * If you do not want to start from scratch, drag-and-drop, and rename nodes,
+   you can start with this provided [[file:scripts/a5_request_rspec.xml][request Rspec]].
+
+ * Each site should be assigned a different GENI Aggregate so you have some
+   geographic diversity and observable differences in latency.
+
+ * Use naming that makes it easy to refer to resources, e.g. distinguish between
+   router and client nodes for each site.
+
+ * Make sure to select link type _*EGRE Tunnel*_ for all three links
+   connecting your routers.  Other stitching remains fraught with
+   danger in GENI.
+ 
+** Experiment IP Configuration
+
+This next step involves assigning IP addresses to each of your nodes.  The
+default IP addresses assigned by the GENI Control Framework will not work for
+this assignment so you will need to perform this assignment using the =ifconfig=
+or =ip= commands.  A "cheat sheet" for using the =ip= tool is provided [[file:images/rh_ip_cheatsheet.pdf][here]].
+These are a valuable set of commands to know for any network adminstrator or
+network hobbyist alike.
+
+Instead of the IP addresses assignmed by the GENI CF, we will assign IP subnets
+for resources at each site, and for each router link.  Below is the recommended
+assignmnet:
+
+| Site or link | IP subnet      |
+|--------------+----------------|
+| Site 1       | 10.10.0.0/24   |
+| Site 2       | 10.10.1.0/24   |
+| Site 3       | 192.168.0.0/24 |
+| rtr1-rtr3    | 10.10.100.0/30 |
+| rtr1-rtr2    | 10.10.101.0/30 |
+| rtr2-rtr3    | 10.10.102.0/30 |
+
+Here are the general rules about the IPs in your network:
+
+   * Nodes using the _10.10.0.0/16_ range should be considered publically
+     routable in this testbed.  These are still within what is known as RFC1918
+     "private" address space but for the purposes of your experiment these will
+     be treated as your "public Internet" addresses.
+
+   * We will consider Site 3 hosts using _192.168.0.0/24_ addresses to be behind
+     a home router (=router3=) using NAT and will experiment with this setup in
+     Task 3.  This is your "private" network.
+
+   * For this assignmnet only choose one of the nodes behind each router to test
+     with at each site.  For example, configure =node1-1= and leave =node1-2=
+     unassigned.  We will save the second node for the next assignment.
+
+There are three approaches to take when it comes to configuring your GENI
+resources:
+
+   1. Update the Request Rspec (directly or via the web interface) to
+      pre-configure the IP addresses you'd like for each node.  This option is
+      difficult to iterate on and update later.
+
+   2. Write a script that configures IP and route settings after the nodes are
+      accessible using SSH.  A template with some example assignments is
+      provided in [[file:scripts/l3_setup.sh][scripts/l3_setup.sh]] This approach is recommended and makes it
+      easy to repeatably reconfigure all resources when needed.
+
+   3. Manually login to each node and execute the commands.  This works but is
+      time consuming and error prone as the testbed changes.
+
+Once your IP addresses are set, it's time to experiment with how traffic can
+flow in your topology.  Login to =router1= and make sure you can ping =router2=
+and =router3=.  The "core" of your network should be working.
+
+However, now try to login to =node1-1= and ping =node2-1=, or even =router2=.
+What happens and why?  Hint: inspect the Linux routing table on each node.
+
+=ip route show=
+
+or using the deprecated command:
+
+=route -n=
+
+** Task 1: Add static routes
+
+This first task will have you create both network and host routes so that you
+can achieve full connectivity between all nodes at Site 1 and Site 2.  Recall
+that Site 3 has a "private" address space that you will deal with later, but
+=router3= should still be reachable from all Site 1 and Site 2 nodes on its
+"core" IP addresses.
+
+For each client node behind a router you will need to add a route for the
+_10.10.0.0/16_ "public" network and use that site's router node as the
+"gateway".  As an example of how to do this:
+
+=ip route add 10.10.0.0/16 via 10.10.0.1=
+
+assuming this site's router has an address of _10.10.0.1_ for the given node
+link.  This essentially says /send all traffic for any destinations in the
+10.10.0.0/16 range to the router interface 10.10.0.1/ and let the router handle
+it for me.  At Site 3, the client nodes will additionally need a similar gateway
+set to =router3= for the _192.168.0.0/24_ subnet.
+
+*Note*: the routing table for each node in your topology also contains a
+/default/ route in the _172.16.0.0/12_ network.  This is for the management
+network allowing you to SSH into the nodes in the first place.  Do not disrupt
+this default route or you will lose access to your node and will need to reboot
+or recreate them!  As long as you make route changes in _10.10.0.0/16_ you
+should be safe.
+
+With this public network route in place on each client, you should be able to
+ping any other router node from any client.  But, can a client in Site 1 reach a
+client in Site 2?  Why not?  Hint: inspect the routing table of the "core"
+router nodes!
+
+The next step involves adding network routes so each Site's router knows how to
+route to each other's networks.  You should now create these routes and using
+the shortest path between each site, which are hopefully obvious in this simple
+topology.  For these "core" network routes, you will also be using the
+"gateway"/"via" directive when setting up these routes.  This is functionally
+setting the "next-hop" for the traffic to take in the network for a given
+address prefix.  Remember your CIDR notation.
+
+Once you have both the client and "core" routes set you should have full
+connectivity between all router nodes and all "client" nodes in Sites 1 and 2.
+Test this out and verify that all works as expected before moving on to the next
+task.  Note the latencies you see when pinging between each site.
+
+** Task 2: Update routes
+
+For this task you will write a script that makes Site 1 traffic route through
+Site 3 to get to Site 2: the long path!  This is accomplished by simply removing
+the old routes for the specific prefixes and installing new routes across the
+necessary "core" routers that will handle the traffic.
+
+   * Test the route update by pinging hosts in Site 2 and observing the latency
+     change.  The ping RTT values should increase significantly depending on
+     which aggregates you have selected for your experiment topology.
+
+   * Make sure your approach can switch easily either routing mode.  Inspect the
+     routing tables on each router node to verify the necessary routes are in
+     place for each direction of traffic.
+
+   * Incorporate this route change functionality into your main configuration
+     script or submit it as a standalone script that updates the necessary
+     "core" routes as appropriate.
+
+** Task 3: Configure NAT for /netster/ services
+
+In this final task you will explore the "private" subnet at Site 3 in the
+_192.168.0.0/24_ address space.  Imagine that =router3= is your home router, the
+device terminating your ISP's connection.  In a typical home router setup
+=router3= would be handing out addresses to your devices in the private address
+space you have assigned.  For this experiment, we have a single =node3-1= that
+already has an address but at the moment can't reach the rest of the "Internet",
+nor can any other host reach services that may be running on that node.
+
+The first step is to allow reachability for Site 3 nodes behind =router3=.  To
+accomplish this we need to enable some form of NAT so that =router3= can
+translate the traffic from the "private" subnet and make it routable within the
+"public" network already configured.  Conversely, =router3= needs to translate
+return traffic from the "public" side back to the "private" space node that
+initiated the outgoing traffic.  With NAT, think about how =router3= "knows" to
+send return traffic from the public Internet back to the correct host in the
+private address space.  What is necessary to make this possible?
+
+You will use a tool on Linux called =iptables= to accomplish the NAT
+configuration.  For a good tutorial on iptables and NAT see [[https://www.karlrupp.net/en/computer/nat_tutorial][this resource.]]
+There are also many other online resources and tutorials on iptables and NAT.
+Read up on tables, chains, and targets and how they apply in the NAT use cases.
+
+The primary technique is to use the =-t nat= table and make use of the
+POSTROUTING chain and MASQUERADE target.  For example,
+
+=iptables -t nat -A POSTROUTING -s <IP subnet> -o <eth dev> -j MASQUERADE=
+
+Experiment with iptables and the NAT table until you have a functional NAT
+=router3= configuration.  From =node3-1= you should be able to reach the client
+nodes in Sites 1 and 2.  Note that you may need to specialize your NAT
+configuration since there are two possible egress paths from =router3= to reach
+Site 1 or Site 2 depending on the already installed "core" routes.
+
+The final step is to use /netster/ as the service we'd like to expose to the
+world on one of Site 3's client nodes through =router3=.  Make sure you can copy
+a working /netster/ compiled binary or Python program that runs on the client
+node in Site 3.
+
+   * Pick a port for /netster/ to run in server mode.  This is the port we need
+     to expose using iptables.
+
+   * Make sure the NAT configuration outlined above allows hosts in Site 3 to
+     reach the "outside" world.
+
+Now, read the tutorial section linked above about *Applications* and understand
+how to use iptables to redirect a port on =router3= to the client node where you
+are running your /netster/ service.  This is a technique known as Destination
+NAT (DNAT).  The iptables rules should look similar to:
+
+=iptables -t nat -A PREROUTING -p tcp --dport <router3 port> -j DNAT --to-destination <client:port>=
+
+Now if you try to access the =router3= port you used in the DNAT rule, your
+remote client should establish contact with the /netster/ service running on the
+Site 3 client in the "private" subnet.  Make sure you inspect the installed
+iptables rules with
+
+=iptables -t nat -L=
+
+If you have ever setup ports on your home router for a given application running
+on your desktop or laptop, this is exactly what that "port forwarding" feature
+does!  You are allowing port-specific access to a service within your private
+network through the router with a public-facing interface.
+
+To gain a deeper understanding of what the traffic looks like at each hop in
+your testbed, you can run =tcpdump= as root on any of the node interfaces.
+Using =tcpdump= can also be a valuable debugging tool as you try and figure out
+how traffic is being forwarded and rewritten as you explore the configurations
+in this assignment.  A typical usage looks like:
+
+=tcpdump -i eth1 -n=
+
+This will display all the packets moving in and out of interface =eth1=.  For
+those not familiar, =tcpdump= is like Wireshark on the command line.  You can
+actually capture the packet traces to a file using =tcpdump= and open them with
+Wireshark if desired.
+
+** Plan for Assignment 06
+   
+   * You will use the same testbed and the additional node at each site so make
+     sure you extend and keep your experiment alive and running.
+
+   * Think about how much effort and planning is necessary to update routes
+     statically even for a relative small topology.  There is a reason why
+     routing algorithms exist!  We will explore how to apply dynamic forwarding
+     rules in the next assignment.
+
+** TO SUBMIT
+   * Running GENI experiment that has been extended so it does not expire before
+     the end of the semester.
+   * Scripts that configure your experiment for Tasks 1-3 with instructions on
+     to apply them and test each correctness of each Task.
+   * Write a report in pdf to show all your work including any necessary snapshot
